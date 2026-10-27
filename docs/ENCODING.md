@@ -1,9 +1,9 @@
 # Encoding contract
 
 `compression.encode` provides allocation-free one-shot encoders. The initial
-encoder is deliberately conservative: it emits RFC 1951 stored blocks. This is
-valid Raw DEFLATE and gives callers deterministic output and an exact capacity
-formula while a match-finding encoder is evaluated separately.
+encoder emits RFC 1951 Fixed-Huffman blocks with bounded greedy LZ77 matching.
+The streaming state carries both the 32-KiB history window and residual writer
+bits across chunks.
 
 `rawStoredSize`, `zlibStoredSize` and `gzipStoredSize` return the exact output
 capacity required. The encoders return `needOutput` without writing partial
@@ -17,7 +17,9 @@ and must not overlap.
 
 `RawStoredEncoderState` provides a streaming variant. Each call encodes one
 chunk, and `finalChunk` must be set only on the final call. The state retains
-only counters and completion status; input and output are never retained.
+only counters, a caller-owned fixed history array and writer bits; input and
+output are never retained.
 `ZlibStoredEncoderState` and `GzipStoredEncoderState` provide equivalent
 streaming wrappers with incremental Adler-32/CRC-32 accounting and trailers
-only on the final call. Bounded LZ77 matching remains additive work.
+only on the final call. Cross-chunk roundtrip coverage is part of the module
+unittests.
