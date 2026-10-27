@@ -10,3 +10,10 @@ targetPath ".build"
 configuration "library" {
     targetType "library"
 }
+
+configuration "unittest" {
+    targetType "executable"
+    sourcePaths "source" "tests"
+    mainSourceFile "tests/primitives_probe.d"
+    excludedSourceFiles "tests/core_probe.d"
+}

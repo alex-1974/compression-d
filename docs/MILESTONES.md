@@ -12,6 +12,10 @@ of their respective implementation milestones.
 
 Exit: allocation-free validated tables and bitreader under DMD/LDC.
 
+Status: implemented and verified under DMD 2.111.0 and LDC 1.42.0.
+See [primitive contracts/tests](PRIMITIVES.md) and
+[lookup experiments](HUFFMAN_BENCHMARKS.md). Codec implementation continues in M2.
+
 ## M2 — Inflate correctness
 
 Exit: stored/fixed/dynamic differential corpus, malformed corpus and bounded

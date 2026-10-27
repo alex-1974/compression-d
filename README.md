@@ -36,6 +36,13 @@ Research repository with an implemented experimental M0 core contract
 output/expansion limits. Codec implementations are still pending. No stable
 public API or release promise exists yet.
 
+M1 adds `compression.bitstream` and `compression.huffman`: an LSB-first reader,
+validated canonical Huffman tables, and compact/prefix lookup strategies. See
+[primitive contracts](docs/PRIMITIVES.md) and
+[lookup experiments](docs/HUFFMAN_BENCHMARKS.md).
+
 See [the core contract](docs/CORE_CONTRACT.md) for ownership, typed workspace
 decisions and streaming semantics. Run `bash scripts/check-core.sh` to test it
 with DMD and LDC, including `@safe @nogc nothrow` compile probes.
+Run `bash scripts/check-primitives.sh` for M1 tests/probes, or `dub test` with
+either compiler for the combined unit tests and primitive consumer probe.

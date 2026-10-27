@@ -1,4 +1,4 @@
-name: Core contract
+name: Core and primitives
 on: [push, pull_request]
 jobs:
   contract:
@@ -18,3 +18,7 @@ jobs:
           mkdir -p .build
           "$DC" -dip1000 -w -unittest -Isource source/compression/core.d tests/core_probe.d -of=.build/core-probe
           .build/core-probe
+      - name: Test bitstream and Huffman primitives
+        run: |
+          "$DC" -dip1000 -w -unittest -Isource source/compression/core.d source/compression/bitstream.d source/compression/huffman.d tests/huffman_tests.d tests/primitives_probe.d -of=.build/primitives-probe
+          .build/primitives-probe

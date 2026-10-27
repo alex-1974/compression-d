@@ -8,3 +8,9 @@
 - Explicit output and expansion limits.
 - No public API promotion before two independent consumers.
 - Benchmarks must prevent compiler elimination and report checksum/output use.
+
+Current checks: `bash scripts/check-core.sh` and
+`bash scripts/check-primitives.sh` run tests and DIP1000/attribute probes on both
+compilers. `dub test` includes M0/M1 unit tests and the primitive consumer probe.
+The lookup benchmark is `bash scripts/bench-huffman.sh`; codec differential
+corpora, framing and complete consumer gates remain pending.
