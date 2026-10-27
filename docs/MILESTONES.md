@@ -29,6 +29,11 @@ See [the Inflate contract](INFLATE.md). Framing remains M3.
 
 Exit: checksum and framing corpus with streaming state tests.
 
+Status: implemented in `compression.checksum`, `compression.zlib` and
+`compression.gzip`, verified under DMD/LDC with saved/generated reference
+frames, negative checksums, optional headers, streaming/reset and cumulative
+member budgets. See [the framing contract](FRAMING.md). Consumer work remains M4.
+
 ## M4 — Consumer/performance validation
 
 Exit: imageio-d and PNG experiments, reproducible benchmarks and memory data.

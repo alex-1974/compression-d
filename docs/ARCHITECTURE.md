@@ -23,6 +23,11 @@ M2 implements `compression.deflate` with pointer-free `InflateState` and
 `InflateWorkspace`: tables, temporary code-length storage and a 32-KiB ring
 history. See [the raw Inflate contract](INFLATE.md) for API and streaming rules.
 
+M3 adds incremental checksums and separate zlib/GZIP parser states over the
+same workspace. Package-internal `compression.framing` handles shared checked
+accounting; raw limits receive consumed framing/previous-member budget bases.
+See [the framing contract](FRAMING.md) for member boundaries and reset semantics.
+
 ## Non-goals
 
 - C bindings or runtime backend selection;

@@ -7,8 +7,9 @@ reserved symbols, tree validity and available history are checked. Dynamic
 headers declaring more than 286 literal/length or 30 distance symbols are
 rejected, matching zlib's reserved-alphabet checks.
 
-zlib/GZIP framing, checksums, preset dictionaries and an encoder remain outside
-M2. The implementation uses no C backend and remains an experimental API.
+zlib/GZIP framing and checksums are implemented separately in M3; see
+[the framing contract](FRAMING.md). Preset dictionaries and an encoder remain
+unimplemented. The raw implementation uses no C backend and remains experimental.
 
 ## Ownership and calls
 

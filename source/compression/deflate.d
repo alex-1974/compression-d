@@ -30,6 +30,8 @@ struct InflateState
     private Phase phase;
     private BitReader bits;
     private DecodeLimits limits;
+    private ulong limitInputBase, limitOutputBase;
+    private uint windowLimit = 32768;
     private DecodeError failure;
     private ulong inputCount;
     private ulong outputCount;
@@ -50,6 +52,25 @@ struct InflateState
     {
         this = InflateState.init;
         limits = newLimits;
+    }
+
+    // Framing adapters account for consumed headers and previous GZIP members.
+    package(compression) void resetFrame(DecodeLimits newLimits,
+        ulong inputBase, ulong outputBase, uint windowSize = 32768)
+    {
+        reset(newLimits);
+        limitInputBase = inputBase;
+        limitOutputBase = outputBase;
+        windowLimit = windowSize;
+    }
+
+    private ErrorCode growth(ulong amount) const
+    {
+        ulong input = inputCount, output = outputCount;
+        if (advanceInput(input, limitInputBase) != ErrorCode.none ||
+            advanceInput(output, limitOutputBase) != ErrorCode.none)
+            return ErrorCode.sizeOverflow;
+        return limits.checkGrowth(input, output, amount);
     }
 
     private BitResult read(scope const(ubyte)[] input, ref size_t cursor,
@@ -185,7 +206,7 @@ Result inflate(ref InflateState state, ref InflateWorkspace workspace,
             --state.stored;
             state.index = 1; // Return to storedBytes after emitting this literal.
             state.phase = Phase.literal;
-            const error = state.limits.checkGrowth(state.inputCount, state.outputCount, 1);
+            const error = state.growth(1);
             if (error != ErrorCode.none)
                 return stop(state, DecodeStatus.error, error, consumed, produced);
             break;
@@ -263,7 +284,7 @@ Result inflate(ref InflateState state, ref InflateWorkspace workspace,
                 state.pending = value.symbol;
                 state.index = 0;
                 state.phase = Phase.literal;
-                const error = state.limits.checkGrowth(state.inputCount, state.outputCount, 1);
+                const error = state.growth(1);
                 if (error != ErrorCode.none)
                     return stop(state, DecodeStatus.error, error, consumed, produced);
             }
@@ -306,9 +327,9 @@ Result inflate(ref InflateState state, ref InflateWorkspace workspace,
             if (value.status != DecodeStatus.done)
                 return stop(state, value.status, value.error, consumed, produced, input.length - consumed);
             state.matchDistance += value.value;
-            if (state.matchDistance > state.historySize)
+            if (state.matchDistance > state.historySize || state.matchDistance > state.windowLimit)
                 return stop(state, DecodeStatus.error, ErrorCode.invalidDistance, consumed, produced);
-            const error = state.limits.checkGrowth(state.inputCount, state.outputCount, state.matchLength);
+            const error = state.growth(state.matchLength);
             if (error != ErrorCode.none)
                 return stop(state, DecodeStatus.error, error, consumed, produced);
             state.phase = Phase.copy;

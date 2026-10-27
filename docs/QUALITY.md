@@ -15,4 +15,6 @@ compilers. `dub test` includes M0/M1 unit tests and the primitive consumer probe
 The lookup benchmark is `bash scripts/bench-huffman.sh`. M2 adds
 `bash scripts/check-inflate.sh` for saved/malformed Inflate corpora, attribute
 probes and independently generated zlib differential cases under both compilers.
-Framing and complete consumer gates remain pending.
+M3 adds `bash scripts/check-framing.sh` for incremental checksum/optional-header
+tests, framed probes and zlib differential cases, including GZIP sequences.
+Complete consumer gates remain pending.

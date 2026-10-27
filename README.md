@@ -43,7 +43,11 @@ validated canonical Huffman tables, and compact/prefix lookup strategies. See
 M2 adds `compression.deflate`: complete raw Inflate for stored/fixed/dynamic
 blocks, caller-owned streaming state and a 32-KiB workspace history, with output
 and expansion budgets. See [the Inflate contract and test evidence](docs/INFLATE.md).
-zlib/GZIP framing and encoding remain pending.
+
+M3 adds `compression.checksum`, `compression.zlib` and `compression.gzip`:
+incremental checksums, streaming framing/trailer validation and optional GZIP
+headers/member sequences. See [the framing contract](docs/FRAMING.md). Preset
+dictionaries are identified but not decoded. Encoding remains pending.
 
 See [the core contract](docs/CORE_CONTRACT.md) for ownership, typed workspace
 decisions and streaming semantics. Run `bash scripts/check-core.sh` to test it
@@ -53,3 +57,5 @@ either compiler for the combined unit tests and primitive consumer probe.
 Run `bash scripts/check-inflate.sh` for raw Inflate probes and generated zlib
 differential checks under both compilers. Saved Inflate tests also run via
 `dub test` without Python/zlib.
+Run `bash scripts/check-framing.sh` for M3 tests/probes and generated framed
+zlib differential checks under both compilers.

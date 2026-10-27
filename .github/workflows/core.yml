@@ -1,4 +1,4 @@
-name: Core, primitives and Inflate
+name: Compression contracts and codecs
 on: [push, pull_request]
 jobs:
   contract:
@@ -33,3 +33,5 @@ jobs:
         run: |
           "$DC" -O -Isource source/compression/core.d source/compression/bitstream.d source/compression/huffman.d source/compression/deflate.d scripts/inflate-oracle.d -of=.build/inflate-oracle
           python3 scripts/check-inflate-differential.py .build/inflate-oracle
+      - name: Test checksums and framed streaming adapters against zlib
+        run: bash scripts/check-framing.sh "$DC"
