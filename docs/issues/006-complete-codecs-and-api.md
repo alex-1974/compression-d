@@ -14,15 +14,15 @@ missing or is not yet admitted as stable.
 - [ ] Expand malformed-input and compression-bomb corpora.
 - [ ] Freeze the workspace-size contract.
 - [ ] Audit `@safe`, `@nogc`, `nothrow`, overflow and aliasing guarantees.
-- [ ] Add reproducible fuzz/property tests.
+- [x] Add reproducible fuzz/property tests.
 
 ### P1 — Encoding
 
-- [ ] Implement bounded Raw DEFLATE encoding.
-- [ ] Add zlib encoding with Adler-32.
-- [ ] Add GZIP encoding with CRC-32 and member metadata.
-- [ ] Define streaming versus one-shot encoder APIs.
-- [ ] Benchmark encoding against zlib.
+- [x] Implement bounded Raw DEFLATE encoding.
+- [x] Add zlib encoding with Adler-32.
+- [x] Add GZIP encoding with CRC-32 and member metadata.
+- [x] Define streaming versus one-shot encoder APIs.
+- [x] Benchmark encoding against zlib.
 
 ### P1 — Container and consumer coverage
 
@@ -33,8 +33,8 @@ missing or is not yet admitted as stable.
 
 ### P2 — API and ecosystem
 
-- [ ] Decide between raw slices, typed workspaces, or both.
-- [ ] Provide stable API documentation and examples.
+- [x] Decide between raw slices, typed workspaces, or both.
+- [x] Provide stable API documentation and examples.
 - [ ] Define DMD/LDC compatibility policy.
 - [ ] Complete license and dependency review.
 - [ ] Validate a second independent consumer.

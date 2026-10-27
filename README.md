@@ -26,10 +26,10 @@ C libraries, system compression backends or wrapper APIs.
 5. GZIP framing with CRC-32;
 6. TIFF/PNG consumer integration experiments.
 
-The first bounded encoder is now available in `compression.encode`. It emits
-allocation-free stored DEFLATE blocks and zlib/GZIP wrappers with checksums;
-match-finding compression and streaming encoder state remain separate future
-extensions. See [the encoding contract](docs/ENCODING.md).
+The bounded encoder is available in `compression.encode`. It emits
+allocation-free fixed-Huffman DEFLATE with greedy LZ77 matching, zlib/GZIP
+wrappers with checksums, and stateful cross-chunk streaming. See [the encoding
+contract](docs/ENCODING.md).
 
 ## Status
 
@@ -49,8 +49,8 @@ and expansion budgets. See [the Inflate contract and test evidence](docs/INFLATE
 M3 adds `compression.checksum`, `compression.zlib` and `compression.gzip`:
 incremental checksums, streaming framing/trailer validation, optional GZIP
 headers/member sequences and zlib preset-dictionary decoding. See [the framing
-contract](docs/FRAMING.md). `compression.encode` adds bounded stored-block Raw
-DEFLATE plus zlib/GZIP one-shot encoding.
+contract](docs/FRAMING.md). `compression.encode` adds bounded fixed-Huffman
+Raw DEFLATE with LZ77 plus zlib/GZIP one-shot and streaming encoding.
 
 M4 validates an additive `imageio-d` TIFF Deflate consumer with a real local DUB
 dependency plus a PNG scanline experiment. Both pass independent GDAL pixel
