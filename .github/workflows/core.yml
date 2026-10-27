@@ -1,0 +1,20 @@
+name: Core contract
+on: [push, pull_request]
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [dmd-2.111.0, ldc-1.42.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+      - name: Build library
+        run: dub build --compiler="$DC"
+      - name: Test contracts and compile attribute probes
+        run: |
+          mkdir -p .build
+          "$DC" -dip1000 -w -unittest -Isource source/compression/core.d tests/core_probe.d -of=.build/core-probe
+          .build/core-probe

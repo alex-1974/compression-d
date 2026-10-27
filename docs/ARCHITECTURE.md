@@ -13,8 +13,11 @@ compression.checksum    reusable checksums
 ```
 
 Codec layers must not allocate implicitly on decode. A caller may provide a
-workspace object or raw `scope ubyte[]`; the final API decision follows the
-first consumer experiments.
+codec-specific typed workspace by `ref`. Input/output slices are borrowed with
+`scope`; persistent history lives in the workspace. The experimental M0
+[core contract](CORE_CONTRACT.md) defines results, errors, limits and ownership.
+Concrete codec workspace layouts follow in M1/M2 and will be validated by the
+consumer experiments.
 
 ## Non-goals
 

@@ -31,5 +31,11 @@ properties are stable.
 
 ## Status
 
-Research and architecture repository. No stable public API or release promise
-exists yet.
+Research repository with an implemented experimental M0 core contract
+(`compression.core`): streaming result types, structured errors and checked
+output/expansion limits. Codec implementations are still pending. No stable
+public API or release promise exists yet.
+
+See [the core contract](docs/CORE_CONTRACT.md) for ownership, typed workspace
+decisions and streaming semantics. Run `bash scripts/check-core.sh` to test it
+with DMD and LDC, including `@safe @nogc nothrow` compile probes.
