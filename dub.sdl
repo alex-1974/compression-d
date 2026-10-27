@@ -1,5 +1,5 @@
 name "compression-d"
-description "D-native, allocation-controlled compression and decompression primitives"
+description "D-native, allocation-controlled compression and decompression codecs"
 license "BSD-3-Clause"
 authors "d-geospatial-workspace"
 targetType "library"
@@ -15,5 +15,5 @@ configuration "unittest" {
     targetType "executable"
     sourcePaths "source" "tests"
     mainSourceFile "tests/primitives_probe.d"
-    excludedSourceFiles "tests/core_probe.d" "tests/inflate_probe.d" "tests/framing_probe.d"
+    excludedSourceFiles "tests/core_probe.d" "tests/inflate_probe.d" "tests/framing_probe.d" "tests/encoder_property.d" "tests/encoder_bench.d"
 }

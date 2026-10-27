@@ -36,7 +36,8 @@ struct ZlibState
 }
 
 Result decodeZlib(ref ZlibState state, ref InflateWorkspace workspace,
-    scope const(ubyte)[] input, scope ubyte[] output, bool endOfInput = false)
+    scope const(ubyte)[] input, scope ubyte[] output, bool endOfInput = false,
+    scope const(ubyte)[] dictionary = null)
     @safe pure nothrow @nogc
 {
     size_t consumed, produced;
@@ -91,7 +92,9 @@ Result decodeZlib(ref ZlibState state, ref InflateWorkspace workspace,
             if (++state.index == 4)
             {
                 state.dictId = state.field;
-                return state.counts.fail(ErrorCode.dictionaryRequired, consumed, produced);
+                if (dictionary.length == 0 || adler32(dictionary) != state.dictId)
+                    return state.counts.fail(ErrorCode.dictionaryRequired, consumed, produced);
+                startPayloadWithDictionary(state, workspace, dictionary);
             }
             break;
         case Phase.trailer:
@@ -109,11 +112,38 @@ Result decodeZlib(ref ZlibState state, ref InflateWorkspace workspace,
     }
 }
 
+private void startPayloadWithDictionary(ref ZlibState state,
+    ref InflateWorkspace workspace, scope const(ubyte)[] dictionary)
+    @safe pure nothrow @nogc
+{
+    state.payloadStart = state.counts.input;
+    state.raw.resetFrame(state.limits, state.counts.input, state.counts.output,
+        1U << ((state.cmf >> 4) + 8));
+    state.raw.seedDictionary(workspace, dictionary);
+    state.phase = Phase.payload;
+}
+
 Result inflateZlib(scope const(ubyte)[] input, scope ubyte[] output,
-    ref InflateWorkspace workspace, DecodeLimits limits = DecodeLimits.init)
+    ref InflateWorkspace workspace, DecodeLimits limits = DecodeLimits.init,
+    scope const(ubyte)[] dictionary = null)
     @safe pure nothrow @nogc
 {
     ZlibState state;
     state.reset(limits);
-    return decodeZlib(state, workspace, input, output, true);
+    return decodeZlib(state, workspace, input, output, true, dictionary);
+}
+
+@safe pure nothrow @nogc unittest
+{
+    // Generated independently with RFC 1950 preset dictionary "hello ".
+    immutable ubyte[19] encoded = [120,187,8,97,2,53,203,0,147,229,249,69,57,41,0,26,11,4,93];
+    immutable ubyte[6] dictionary = ['h','e','l','l','o',' '];
+    ubyte[11] output;
+    InflateWorkspace workspace;
+    auto result = inflateZlib(encoded, output, workspace, DecodeLimits.init, dictionary);
+    assert(result.status == DecodeStatus.done && output[] == "hello world");
+    workspace = InflateWorkspace.init;
+    output[] = 0;
+    result = inflateZlib(encoded, output, workspace);
+    assert(result.status == DecodeStatus.error && result.error.code == ErrorCode.dictionaryRequired);
 }
