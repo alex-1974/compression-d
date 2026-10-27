@@ -4,6 +4,7 @@ module compression.encode;
 import compression.checksum;
 import compression.core;
 import compression.deflate;
+import compression.zlib;
 
 private enum BlockLimit = 65535;
 private immutable ushort[29] lengthBase = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
@@ -61,7 +62,8 @@ private bool emitMatch(ref BitWriter w, LzMatch m) @safe pure nothrow @nogc
 
 /// Greedy fixed-Huffman DEFLATE with bounded LZ77 matches.
 Result encodeRawFixedLz(scope const(ubyte)[] input, scope ubyte[] output,
-    bool finalBlock = true)
+    bool finalBlock = true, scope const(ubyte)[] history = null,
+    uint historySize = 0, uint historyWrite = 0)
     @safe pure nothrow @nogc
 {
     BitWriter w; w.buffer = output;
@@ -69,7 +71,8 @@ Result encodeRawFixedLz(scope const(ubyte)[] input, scope ubyte[] output,
     size_t p;
     while (p < input.length)
     {
-        auto m = findLzMatch(input, p);
+        auto m = historySize == 0 ? findLzMatch(input, p) :
+            findLzMatchWithHistory(input, p, history, historySize, historyWrite);
         if (m.length >= 3) { if (!emitMatch(w, m)) return Result.needOutput; p += m.length; }
         else { if (!emitFixed(w, input[p])) return Result.needOutput; ++p; }
     }
@@ -81,6 +84,37 @@ struct LzMatch
 {
     ushort length;
     ushort distance;
+}
+
+private ubyte virtualByte(scope const(ubyte)[] input, size_t pos,
+    scope const(ubyte)[] history, uint historySize, uint writePos)
+    @safe pure nothrow @nogc
+{
+    if (pos < historySize)
+        return history[(writePos + 32768 - historySize + pos) & 32767];
+    return input[pos - historySize];
+}
+
+private LzMatch findLzMatchWithHistory(scope const(ubyte)[] input, size_t position,
+    scope const(ubyte)[] history, uint historySize, uint writePos)
+    @safe pure nothrow @nogc
+{
+    const total = historySize + input.length;
+    if (position >= input.length || total - (historySize + position) < 3) return LzMatch.init;
+    const absolute = historySize + position;
+    const maxLength = (input.length - position) > 258 ? 258 : input.length - position;
+    LzMatch best;
+    const maxDistance = absolute > 32768 ? 32768 : absolute;
+    foreach (size_t distance; 1 .. maxDistance + 1)
+    {
+        const candidate = absolute - distance;
+        size_t length;
+        while (length < maxLength && virtualByte(input, candidate + length, history, historySize, writePos) ==
+            virtualByte(input, absolute + length, history, historySize, writePos)) ++length;
+        if (length >= 3 && length > best.length)
+            best = LzMatch(cast(ushort) length, cast(ushort) distance);
+    }
+    return best;
 }
 
 /// Bounded greedy LZ77 search. The returned match never crosses the input
@@ -119,11 +153,49 @@ struct RawStoredEncoderState
 {
     private bool finished;
     private ulong totalInput;
+    private ubyte[32768] history;
+    private uint historySize;
+    private uint historyWrite;
+    private uint pendingBits;
+    private uint pendingCount;
 
     @safe pure nothrow @nogc:
     void reset() { this = RawStoredEncoderState.init; }
     @property ulong inputCount() const { return totalInput; }
     @property bool done() const { return finished; }
+    @property uint availableHistory() const { return historySize; }
+    private void remember(scope const(ubyte)[] bytes)
+    {
+        foreach (value; bytes)
+        {
+            history[historyWrite] = value;
+            historyWrite = (historyWrite + 1) & 32767;
+            historySize = historySize == 32768 ? 32768 : historySize + 1;
+        }
+    }
+}
+
+private Result encodeFixedChunk(ref RawStoredEncoderState state,
+    scope const(ubyte)[] input, scope ubyte[] output, bool finalBlock)
+    @safe pure nothrow @nogc
+{
+    BitWriter w;
+    w.buffer = output; w.bits = state.pendingBits; w.count = state.pendingCount;
+    if (!w.put(finalBlock ? 1 : 0, 1) || !w.put(1, 2)) return Result.needOutput;
+    size_t p;
+    while (p < input.length)
+    {
+        auto m = state.historySize == 0 ? findLzMatch(input, p) :
+            findLzMatchWithHistory(input, p, state.history[], state.historySize, state.historyWrite);
+        if (m.length >= 3) { if (!emitMatch(w, m)) return Result.needOutput; p += m.length; }
+        else { if (!emitFixed(w, input[p])) return Result.needOutput; ++p; }
+    }
+    if (!emitFixed(w, 256)) return Result.needOutput;
+    if (finalBlock && !w.finish()) return Result.needOutput;
+    state.pendingBits = w.bits; state.pendingCount = w.count;
+    state.remember(input);
+    if (finalBlock) state.finished = true;
+    return Result.done(input.length, w.pos);
 }
 
 struct ZlibStoredEncoderState
@@ -213,6 +285,7 @@ Result encodeRawStoredChunk(ref RawStoredEncoderState state,
         output[last] = 0;
     }
     if (finalChunk) state.finished = true;
+    state.remember(input);
     return result;
 }
 
@@ -247,7 +320,10 @@ Result encodeZlibStoredChunk(ref ZlibStoredEncoderState state,
     size_t p;
     if (!state.started) { output[0] = 0x78; output[1] = 1; p = 2; state.started = true; }
     state.checksum.update(input);
-    auto raw = encodeRawFixedLz(input, output[p .. $], finalChunk);
+    // Streaming calls are byte-oriented; fixed-Huffman blocks retain residual
+    // bits across block boundaries and therefore require a persistent bitwriter.
+    // Until that stateful writer is exposed, use aligned stored blocks here.
+    auto raw = encodeFixedChunk(state.raw, input, output[p .. $], finalChunk);
     if (raw.status != DecodeStatus.done) return raw;
     p += raw.produced;
     if (finalChunk)
@@ -302,7 +378,7 @@ Result encodeGzipStoredChunk(ref GzipStoredEncoderState state,
     }
     state.checksum.update(input);
     state.size += cast(uint) input.length;
-    auto raw = encodeRawFixedLz(input, output[p .. $], finalChunk);
+    auto raw = encodeFixedChunk(state.raw, input, output[p .. $], finalChunk);
     if (raw.status != DecodeStatus.done) return raw;
     p += raw.produced;
     if (finalChunk)
@@ -342,6 +418,16 @@ Result encodeGzipStoredChunk(ref GzipStoredEncoderState state,
     workspace = InflateWorkspace.init;
     assert(inflateRawForEncodeTest(fixed[0 .. fixedResult.produced], fixedDecoded, workspace));
     assert(fixedDecoded == repetitive);
+    ZlibStoredEncoderState zs;
+    ubyte[128] z1, z2, zjoined, zdecoded;
+    auto z1r = encodeZlibStoredChunk(zs, repetitive[0 .. 6], z1[], false);
+    auto z2r = encodeZlibStoredChunk(zs, repetitive[6 .. $], z2[], true);
+    assert(z1r.status == DecodeStatus.done && z2r.status == DecodeStatus.done);
+    zjoined[0 .. z1r.produced] = z1[0 .. z1r.produced];
+    zjoined[z1r.produced .. z1r.produced + z2r.produced] = z2[0 .. z2r.produced];
+    workspace = InflateWorkspace.init;
+    assert(inflateZlib(zjoined[0 .. z1r.produced + z2r.produced], zdecoded, workspace).status == DecodeStatus.done);
+    assert(zdecoded == repetitive);
     RawStoredEncoderState streaming;
     ubyte[32] first, second;
     assert(encodeRawStoredChunk(streaming, sample[0 .. 2], first[], false).status == DecodeStatus.done);
