@@ -2,7 +2,8 @@
 
 These M1 modules implement the bitreader/Huffman milestone. They are imported
 explicitly, without re-exports from `compression`. There is no Inflate decoder
-yet; encoding, checksums, framing and the LZ77 window remain later work.
+in this layer; M2 now provides it in `compression.deflate`, including the LZ77
+window. Encoding, checksums and framing remain later work.
 
 ## Borrowed input and transactional reads
 

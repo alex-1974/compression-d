@@ -19,6 +19,10 @@ codec-specific typed workspace by `ref`. Input/output slices are borrowed with
 Concrete codec workspace layouts follow in M1/M2 and will be validated by the
 consumer experiments.
 
+M2 implements `compression.deflate` with pointer-free `InflateState` and
+`InflateWorkspace`: tables, temporary code-length storage and a 32-KiB ring
+history. See [the raw Inflate contract](INFLATE.md) for API and streaming rules.
+
 ## Non-goals
 
 - C bindings or runtime backend selection;

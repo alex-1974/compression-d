@@ -33,16 +33,23 @@ properties are stable.
 
 Research repository with an implemented experimental M0 core contract
 (`compression.core`): streaming result types, structured errors and checked
-output/expansion limits. Codec implementations are still pending. No stable
-public API or release promise exists yet.
+output/expansion limits. No stable public API or release promise exists yet.
 
 M1 adds `compression.bitstream` and `compression.huffman`: an LSB-first reader,
 validated canonical Huffman tables, and compact/prefix lookup strategies. See
 [primitive contracts](docs/PRIMITIVES.md) and
 [lookup experiments](docs/HUFFMAN_BENCHMARKS.md).
 
+M2 adds `compression.deflate`: complete raw Inflate for stored/fixed/dynamic
+blocks, caller-owned streaming state and a 32-KiB workspace history, with output
+and expansion budgets. See [the Inflate contract and test evidence](docs/INFLATE.md).
+zlib/GZIP framing and encoding remain pending.
+
 See [the core contract](docs/CORE_CONTRACT.md) for ownership, typed workspace
 decisions and streaming semantics. Run `bash scripts/check-core.sh` to test it
 with DMD and LDC, including `@safe @nogc nothrow` compile probes.
 Run `bash scripts/check-primitives.sh` for M1 tests/probes, or `dub test` with
 either compiler for the combined unit tests and primitive consumer probe.
+Run `bash scripts/check-inflate.sh` for raw Inflate probes and generated zlib
+differential checks under both compilers. Saved Inflate tests also run via
+`dub test` without Python/zlib.

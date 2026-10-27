@@ -21,6 +21,10 @@ See [primitive contracts/tests](PRIMITIVES.md) and
 Exit: stored/fixed/dynamic differential corpus, malformed corpus and bounded
 output behavior.
 
+Status: implemented in `compression.deflate` and verified under DMD/LDC with
+saved/generated zlib corpora, malformed cases, streaming and budget tests.
+See [the Inflate contract](INFLATE.md). Framing remains M3.
+
 ## M3 — zlib/GZIP framing
 
 Exit: checksum and framing corpus with streaming state tests.
