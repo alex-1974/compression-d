@@ -1,5 +1,5 @@
 name "compression-d"
-description "D-native, allocation-controlled compression and decompression primitives"
+description "D-native, allocation-controlled compression and decompression codecs"
 license "BSD-3-Clause"
 authors "d-geospatial-workspace"
 targetType "library"

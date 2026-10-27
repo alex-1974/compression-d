@@ -64,6 +64,19 @@ struct InflateState
         windowLimit = windowSize;
     }
 
+    /// Seed the LZ history for a zlib preset dictionary. Only the last 32 KiB
+    /// are addressable by RFC 1951 distances.
+    package(compression) void seedDictionary(ref InflateWorkspace workspace,
+        scope const(ubyte)[] dictionary)
+        @safe pure nothrow @nogc
+    {
+        const start = dictionary.length > 32768 ? dictionary.length - 32768 : 0;
+        const bytes = dictionary[start .. $];
+        workspace.history[0 .. bytes.length] = bytes;
+        writePosition = cast(uint) bytes.length & 32767;
+        historySize = cast(uint) bytes.length;
+    }
+
     private ErrorCode growth(ulong amount) const
     {
         ulong input = inputCount, output = outputCount;

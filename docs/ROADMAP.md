@@ -35,7 +35,8 @@
 
 ## M5 — Compression and release decision
 
-- encoder only after decoder evidence;
+- bounded stored-block encoder and zlib/GZIP encoding;
+- evaluate match-finding and streaming encoders against the same contracts;
 - independent consumer validation;
 - API/ABI and license review;
 - decide whether a public package is justified.

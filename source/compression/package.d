@@ -1,4 +1,4 @@
 module compression;
 
-// Public modules are intentionally not exported yet. This package begins as
-// a research repository; API promotion requires the gates in docs/QUALITY.md.
+// Public modules remain explicit imports. The package module is intentionally
+// not a wildcard export so codec-specific contracts stay visible to callers.
