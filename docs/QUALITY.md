@@ -17,4 +17,8 @@ The lookup benchmark is `bash scripts/bench-huffman.sh`. M2 adds
 probes and independently generated zlib differential cases under both compilers.
 M3 adds `bash scripts/check-framing.sh` for incremental checksum/optional-header
 tests, framed probes and zlib differential cases, including GZIP sequences.
-Complete consumer gates remain pending.
+Production consumer admission remains pending.
+The M4 local TIFF/PNG research gate is now `bash scripts/check-consumers.sh`,
+with `python3 scripts/bench-consumers.py` for repeated throughput/RSS/GC data.
+It requires the local imageio-d research context and GDAL. Broader production
+consumer/API admission remains pending; see `docs/CONSUMERS.md`.

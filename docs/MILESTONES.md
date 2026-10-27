@@ -38,6 +38,12 @@ member budgets. See [the framing contract](FRAMING.md). Consumer work remains M4
 
 Exit: imageio-d and PNG experiments, reproducible benchmarks and memory data.
 
+Status: local research gate completed under DMD/LDC. A real imageio-d Deflate
+path dependency and PNG scanline consumer pass GDAL byte oracles, negative
+cases, workspace/parallel isolation and zero hot-path GC probes. Repeated
+throughput/RSS data and the uncommitted imageio-d research-context dependency
+are documented in [CONSUMERS.md](CONSUMERS.md). Public admission remains M5.
+
 ## M5 — Public package decision
 
 Exit: two independent consumers, license review and accepted public API.

@@ -49,6 +49,12 @@ incremental checksums, streaming framing/trailer validation and optional GZIP
 headers/member sequences. See [the framing contract](docs/FRAMING.md). Preset
 dictionaries are identified but not decoded. Encoding remains pending.
 
+M4 validates an additive `imageio-d` TIFF Deflate consumer with a real local DUB
+dependency plus a PNG scanline experiment. Both pass independent GDAL pixel
+oracles under DMD/LDC with bounded caller storage and no measured hot-path GC
+allocation. See [consumer scope, reproduction and measurements](docs/CONSUMERS.md).
+These are research integrations, not a production TIFF/PNG API admission.
+
 See [the core contract](docs/CORE_CONTRACT.md) for ownership, typed workspace
 decisions and streaming semantics. Run `bash scripts/check-core.sh` to test it
 with DMD and LDC, including `@safe @nogc nothrow` compile probes.
@@ -59,3 +65,5 @@ differential checks under both compilers. Saved Inflate tests also run via
 `dub test` without Python/zlib.
 Run `bash scripts/check-framing.sh` for M3 tests/probes and generated framed
 zlib differential checks under both compilers.
+Run `bash scripts/check-consumers.sh` for the separate local M4 gate; it needs
+the imageio-d research checkout and a Python with GDAL bindings.
