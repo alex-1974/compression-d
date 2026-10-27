@@ -1,0 +1,12 @@
+name "compression-d"
+description "D-native, allocation-controlled compression and decompression primitives"
+license "BSD-3-Clause"
+authors "d-geospatial-workspace"
+targetType "library"
+sourcePaths "source"
+importPaths "source"
+targetPath ".build"
+
+configuration "library" {
+    targetType "library"
+}
