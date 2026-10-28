@@ -33,7 +33,7 @@ private struct BitWriter
 {
     ubyte[] buffer; size_t pos; uint bits, count;
     @safe pure nothrow @nogc:
-    bool put(uint value, uint width)
+    bool put(uint value, uint width) scope
     {
         if (width == 0) return true;
         if (pos + ((count + width + 7) / 8) > buffer.length) return false;
@@ -41,7 +41,7 @@ private struct BitWriter
         while (count >= 8) { buffer[pos++] = cast(ubyte) bits; bits >>= 8; count -= 8; }
         return true;
     }
-    bool finish()
+    bool finish() scope
     { if (count != 0) { if (pos >= buffer.length) return false; buffer[pos++] = cast(ubyte) bits; } return true; }
 }
 

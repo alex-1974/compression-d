@@ -40,3 +40,8 @@ The canonical verification commands are `bash scripts/check-encoder-property.sh`
 and `python3 scripts/bench-encoder.py`. The latter reports linear and
 hash-chain compression-d throughput, plus zlib throughput and compressed size
 on the same deterministic corpus.
+
+`bash scripts/check-encode-dip1000.sh` fully links an encoder consumer with
+`-dip1000` under both DMD and LDC when available. It exercises raw fixed-LZ,
+hash-chain, zlib, GZIP and both framed chunk paths; declaration-only compile
+probes are not considered sufficient.

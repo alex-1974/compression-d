@@ -4,6 +4,7 @@ The encoder and decoder gates are reproducible from the repository root:
 
 ```sh
 bash scripts/check-encode.sh
+bash scripts/check-encode-dip1000.sh
 bash scripts/check-encoder-property.sh
 python3 scripts/bench-encoder.py
 bash scripts/check-core.sh
