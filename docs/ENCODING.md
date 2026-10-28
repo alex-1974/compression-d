@@ -26,6 +26,17 @@ only on the final call. Cross-chunk roundtrip coverage is part of the module
 unittests. The `Stored` suffix is retained for source compatibility with the
 initial API; new callers should treat these as experimental fixed-LZ encoders.
 
+`HashChainMatchFinder` and `encodeRawFixedLzHashChain` provide an optional
+bounded search strategy. It owns 32,768 bucket heads, a 32,768-entry ring of
+predecessors and the 32-KiB byte history, all inline and caller-owned. The
+finder examines at most 32 candidates per position, limits matches to 258
+bytes and distances to 32 KiB, and preserves residual bit-writer state and
+history across calls. Inputs whose cumulative position would exceed `uint`
+range return `invalidArgument`; no silent position wrap is allowed. The
+linear matcher remains the default so existing output and workspace behavior
+are unchanged.
+
 The canonical verification commands are `bash scripts/check-encoder-property.sh`
-and `python3 scripts/bench-encoder.py`. The latter reports both compression-d
-and zlib throughput and compressed size on the same deterministic corpus.
+and `python3 scripts/bench-encoder.py`. The latter reports linear and
+hash-chain compression-d throughput, plus zlib throughput and compressed size
+on the same deterministic corpus.

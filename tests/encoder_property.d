@@ -34,6 +34,15 @@ void main()
         auto decodedResult = inflateRaw(encoded, decoded, workspace);
         assert(decodedResult.status == DecodeStatus.done, "decoder rejected encoder output");
         assert(decoded == input, "roundtrip mismatch");
+        HashChainMatchFinder finder;
+        ubyte[] hashed = new ubyte[length * 2 + 128];
+        auto hashedResult = encodeRawFixedLzHashChain(finder, input, hashed[]);
+        assert(hashedResult.status == DecodeStatus.done, "hash-chain encoder returned needOutput");
+        ubyte[] hashDecoded = new ubyte[length];
+        workspace = InflateWorkspace.init;
+        auto hashDecodedResult = inflateRaw(hashed[0 .. hashedResult.produced], hashDecoded, workspace);
+        assert(hashDecodedResult.status == DecodeStatus.done, "decoder rejected hash-chain output");
+        assert(hashDecoded == input, "hash-chain roundtrip mismatch");
         total += length;
     }
     writeln("encoder property cases=256 bytes=", total, " seed=0xC0DEC0DE");

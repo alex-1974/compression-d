@@ -16,7 +16,8 @@ bash scripts/check-consumers.sh
 The DMD/LDC gates exercise safety attributes, malformed input, differential
 Inflate/framing corpora, consumer isolation and zero hot-path GC growth. The
 encoder module tests cover fixed-Huffman literals, LZ77 length/distance tokens,
-cross-chunk history, zlib/GZIP checksums, insufficient output and roundtrips.
+cross-chunk history, bounded hash-chain matching, zlib/GZIP checksums,
+insufficient output and roundtrips.
 
 The API is one-shot or explicitly stateful streaming; all buffers and the
 fixed 32-KiB history are caller-owned. No C compression backend is used.

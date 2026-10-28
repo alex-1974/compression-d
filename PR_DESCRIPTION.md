@@ -3,6 +3,7 @@
 ## Summary
 
 - persists DEFLATE bit-writer state and the 32 KiB LZ77 history across chunks;
+- adds an optional bounded hash-chain matcher with caller-owned fixed tables;
 - verifies deterministic encoder roundtrips over repetitive, low-entropy and random inputs;
 - documents a reproducible zlib reference benchmark and the compiler/consumer gates.
 
