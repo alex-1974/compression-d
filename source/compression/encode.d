@@ -86,6 +86,142 @@ struct LzMatch
     ushort distance;
 }
 
+/// Caller-owned bounded hash-chain match finder.
+///
+/// The tables use 32,768 buckets and a 32-entry search budget. The fixed
+/// arrays are part of the value, so callers can place this state wherever the
+/// encoder workspace is owned. The finder retains only the RFC 1951 history
+/// window and never allocates.
+struct HashChainMatchFinder
+{
+    private uint[32768] heads;
+    private uint[32768] previous;
+    private ubyte[32768] history;
+    private uint historySize;
+    private uint historyWrite;
+    private uint position;
+    private uint pendingBits;
+    private uint pendingCount;
+    private bool overflowed;
+
+    @safe pure nothrow @nogc:
+    void reset() { this = HashChainMatchFinder.init; }
+    @property uint availableHistory() const { return historySize; }
+    @property bool valid() const { return !overflowed; }
+}
+
+private uint chainHash(ubyte a, ubyte b, ubyte c) @safe pure nothrow @nogc
+{ return (((cast(uint) a * 251 + b) * 251 + c) & 32767); }
+
+private ubyte finderByte(scope const(ubyte)[] input, uint base, uint historySize,
+    scope const(ubyte)[] history, uint writePos, uint absolute)
+    @safe pure nothrow @nogc
+{
+    if (absolute < base)
+        return history[(writePos + 32768 - (base - absolute)) & 32767];
+    return input[absolute - base];
+}
+
+private bool finderHasByte(uint base, uint inputLength, uint historySize, uint absolute)
+    @safe pure nothrow @nogc
+{ return absolute >= base - historySize && absolute < base + inputLength; }
+
+private void finderInsert(ref HashChainMatchFinder finder, scope const(ubyte)[] input,
+    uint base, uint absolute)
+    @safe pure nothrow @nogc
+{
+    if (!finderHasByte(base, cast(uint) input.length, finder.historySize, absolute) ||
+        !finderHasByte(base, cast(uint) input.length, finder.historySize, absolute + 2)) return;
+    auto hash = chainHash(finderByte(input, base, finder.historySize, finder.history[],
+        finder.historyWrite, absolute), finderByte(input, base, finder.historySize,
+        finder.history[], finder.historyWrite, absolute + 1), finderByte(input, base,
+        finder.historySize, finder.history[], finder.historyWrite, absolute + 2));
+    const slot = absolute & 32767;
+    finder.previous[slot] = finder.heads[hash];
+    finder.heads[hash] = absolute + 1;
+}
+
+private LzMatch finderMatch(ref HashChainMatchFinder finder, scope const(ubyte)[] input,
+    uint base, uint position)
+    @safe pure nothrow @nogc
+{
+    if (position >= input.length || input.length - position < 3) return LzMatch.init;
+    const absolute = base + position;
+    auto hash = chainHash(input[position], input[position + 1], input[position + 2]);
+    uint candidateEntry = finder.heads[hash];
+    LzMatch best;
+    foreach (_; 0 .. 32)
+    {
+        if (candidateEntry == 0) break;
+        const candidate = candidateEntry - 1;
+        if (candidate >= absolute || absolute - candidate > 32768) break;
+        const maxLength = (input.length - position) > 258 ? 258 : input.length - position;
+        size_t length;
+        while (length < maxLength && finderByte(input, base, finder.historySize,
+            finder.history[], finder.historyWrite, candidate + cast(uint) length) ==
+            finderByte(input, base, finder.historySize, finder.history[], finder.historyWrite,
+                absolute + cast(uint) length)) ++length;
+        if (length >= 3 && length > best.length)
+        {
+            best = LzMatch(cast(ushort) length, cast(ushort) (absolute - candidate));
+            if (length == maxLength) break;
+        }
+        candidateEntry = finder.previous[candidate & 32767];
+    }
+    return best;
+}
+
+private void finderRemember(ref HashChainMatchFinder finder, scope const(ubyte)[] input,
+    uint base)
+    @safe pure nothrow @nogc
+{
+    foreach (i; 0 .. input.length)
+    {
+        const absolute = base + cast(uint) i;
+        finderInsert(finder, input, base, absolute);
+        finder.history[finder.historyWrite] = input[i];
+        finder.historyWrite = (finder.historyWrite + 1) & 32767;
+        finder.historySize = finder.historySize == 32768 ? 32768 : finder.historySize + 1;
+    }
+    if (cast(ulong) base + input.length > uint.max)
+        finder.overflowed = true;
+    else finder.position = base + cast(uint) input.length;
+}
+
+/// Fixed-Huffman DEFLATE using a bounded hash-chain search.
+/// The default linear matcher remains available through encodeRawFixedLz.
+Result encodeRawFixedLzHashChain(ref HashChainMatchFinder finder,
+    scope const(ubyte)[] input, scope ubyte[] output, bool finalBlock = true)
+    @safe pure nothrow @nogc
+{
+    if (finder.overflowed || cast(ulong) finder.position + input.length > uint.max)
+        return Result.failure(ErrorCode.invalidArgument);
+    // Complete the two positions at the end of the previous chunk now that
+    // their three-byte hashes can see the new chunk's prefix.
+    if (finder.position >= 2)
+        finderInsert(finder, input, finder.position, finder.position - 2);
+    if (finder.position >= 1)
+        finderInsert(finder, input, finder.position, finder.position - 1);
+    BitWriter w; w.buffer = output; w.bits = finder.pendingBits; w.count = finder.pendingCount;
+    if (!w.put(finalBlock ? 1 : 0, 1) || !w.put(1, 2)) return Result.needOutput;
+    size_t p;
+    while (p < input.length)
+    {
+        auto m = finderMatch(finder, input, finder.position, cast(uint) p);
+        const count = m.length >= 3 ? m.length : 1;
+        if (m.length >= 3) { if (!emitMatch(w, m)) return Result.needOutput; }
+        else if (!emitFixed(w, input[p])) return Result.needOutput;
+        foreach (i; 0 .. count) finderInsert(finder, input, finder.position, finder.position + cast(uint) p + i);
+        p += count;
+    }
+    if (!emitFixed(w, 256)) return Result.needOutput;
+    if (finalBlock && !w.finish()) return Result.needOutput;
+    finder.pendingBits = w.bits;
+    finder.pendingCount = w.count;
+    finderRemember(finder, input, finder.position);
+    return Result.done(input.length, w.pos);
+}
+
 private ubyte virtualByte(scope const(ubyte)[] input, size_t pos,
     scope const(ubyte)[] history, uint historySize, uint writePos)
     @safe pure nothrow @nogc
@@ -418,6 +554,26 @@ Result encodeGzipStoredChunk(ref GzipStoredEncoderState state,
     workspace = InflateWorkspace.init;
     assert(inflateRawForEncodeTest(fixed[0 .. fixedResult.produced], fixedDecoded, workspace));
     assert(fixedDecoded == repetitive);
+    HashChainMatchFinder finder;
+    ubyte[64] hashed;
+    auto hashedResult = encodeRawFixedLzHashChain(finder, repetitive, hashed[]);
+    assert(hashedResult.status == DecodeStatus.done && hashedResult.produced <= fixedResult.produced + 8);
+    ubyte[12] hashedDecoded;
+    workspace = InflateWorkspace.init;
+    assert(inflateRawForEncodeTest(hashed[0 .. hashedResult.produced], hashedDecoded, workspace));
+    assert(hashedDecoded == repetitive);
+    HashChainMatchFinder chunkFinder;
+    ubyte[64] chunkA, chunkB, chunkJoined;
+    auto chunkAR = encodeRawFixedLzHashChain(chunkFinder, repetitive[0 .. 6], chunkA[], false);
+    auto chunkBR = encodeRawFixedLzHashChain(chunkFinder, repetitive[6 .. $], chunkB[], true);
+    assert(chunkAR.status == DecodeStatus.done && chunkBR.status == DecodeStatus.done);
+    chunkJoined[0 .. chunkAR.produced] = chunkA[0 .. chunkAR.produced];
+    chunkJoined[chunkAR.produced .. chunkAR.produced + chunkBR.produced] =
+        chunkB[0 .. chunkBR.produced];
+    workspace = InflateWorkspace.init;
+    assert(inflateRawForEncodeTest(chunkJoined[0 .. chunkAR.produced + chunkBR.produced],
+        hashedDecoded, workspace));
+    assert(hashedDecoded == repetitive);
     ZlibStoredEncoderState zs;
     ubyte[128] z1, z2, zjoined, zdecoded;
     auto z1r = encodeZlibStoredChunk(zs, repetitive[0 .. 6], z1[], false);
