@@ -585,8 +585,10 @@ Result encodeGzipStoredChunk(ref GzipStoredEncoderState state,
     zjoined[0 .. z1r.produced] = z1[0 .. z1r.produced];
     zjoined[z1r.produced .. z1r.produced + z2r.produced] = z2[0 .. z2r.produced];
     workspace = InflateWorkspace.init;
-    assert(inflateZlib(zjoined[0 .. z1r.produced + z2r.produced], zdecoded, workspace).status == DecodeStatus.done);
-    assert(zdecoded == repetitive);
+    auto zdecodedResult = inflateZlib(zjoined[0 .. z1r.produced + z2r.produced], zdecoded, workspace);
+    assert(zdecodedResult.status == DecodeStatus.done);
+    assert(zdecodedResult.produced == repetitive.length);
+    assert(zdecoded[0 .. zdecodedResult.produced] == repetitive[]);
     RawStoredEncoderState streaming;
     ubyte[32] first, second;
     assert(encodeRawStoredChunk(streaming, sample[0 .. 2], first[], false).status == DecodeStatus.done);
