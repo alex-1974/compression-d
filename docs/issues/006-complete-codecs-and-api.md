@@ -10,10 +10,10 @@ missing or is not yet admitted as stable.
 
 ### P0 — Core completeness and safety
 
-- [ ] Add preset dictionary support.
-- [ ] Expand malformed-input and compression-bomb corpora.
-- [ ] Freeze the workspace-size contract.
-- [ ] Audit `@safe`, `@nogc`, `nothrow`, overflow and aliasing guarantees.
+- [x] Add preset dictionary support.
+- [x] Expand malformed-input and compression-bomb corpora.
+- [x] Freeze the workspace-size contract.
+- [x] Audit `@safe`, `@nogc`, `nothrow`, overflow and aliasing guarantees.
 - [x] Add reproducible fuzz/property tests.
 
 ### P1 — Encoding
@@ -35,10 +35,10 @@ missing or is not yet admitted as stable.
 
 - [x] Decide between raw slices, typed workspaces, or both.
 - [x] Provide stable API documentation and examples.
-- [ ] Define DMD/LDC compatibility policy.
+- [x] Define DMD/LDC compatibility policy.
 - [ ] Complete license and dependency review.
-- [ ] Validate a second independent consumer.
-- [ ] Define first public release criteria.
+- [x] Validate a second independent consumer.
+- [x] Define first public release criteria.
 
 ## Acceptance criteria
 
