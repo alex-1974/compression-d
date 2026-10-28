@@ -24,6 +24,9 @@ struct InflateWorkspace
     private ubyte[19] codeLengths;
 }
 
+/// Fixed number of bytes occupied by one caller-owned InflateWorkspace.
+enum size_t inflateWorkspaceBytes = InflateWorkspace.sizeof;
+
 /// Default initialization starts a new raw stream with disabled policy limits.
 struct InflateState
 {

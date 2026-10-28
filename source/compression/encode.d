@@ -110,6 +110,9 @@ struct HashChainMatchFinder
     @property bool valid() const { return !overflowed; }
 }
 
+/// Fixed caller-owned storage required by HashChainMatchFinder.
+enum size_t hashChainWorkspaceBytes = HashChainMatchFinder.sizeof;
+
 private uint chainHash(ubyte a, ubyte b, ubyte c) @safe pure nothrow @nogc
 { return (((cast(uint) a * 251 + b) * 251 + c) & 32767); }
 
