@@ -1,4 +1,5 @@
 name "compression-d"
+version "0.2.0"
 description "D-native, allocation-controlled compression and decompression codecs"
 license "BSD-3-Clause"
 authors "d-geospatial-workspace"

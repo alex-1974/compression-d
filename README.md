@@ -33,7 +33,7 @@ contract](docs/ENCODING.md).
 
 ## Status
 
-Research repository with an implemented experimental M0 core contract
+Version 0.2.0. Research repository with an implemented experimental M0 core contract
 (`compression.core`): streaming result types, structured errors and checked
 output/expansion limits. No stable public API or release promise exists yet.
 
