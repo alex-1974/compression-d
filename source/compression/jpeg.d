@@ -30,6 +30,13 @@ struct Limits
     ulong maxPixels = 64_000_000;
 }
 
+private uint be32(scope const(ubyte)[] data, size_t p)
+    @safe pure nothrow @nogc
+{
+    return (cast(uint)data[p] << 24) | (cast(uint)data[p + 1] << 16) |
+        (cast(uint)data[p + 2] << 8) | data[p + 3];
+}
+
 struct EncodeOptions
 {
     /// De-facto JPEG quality scale, 1 (coarse) through 100 (finest).
@@ -263,6 +270,45 @@ struct MetadataResult
     { return status == Status.ok; }
 }
 
+enum MetadataState : ubyte { absent, known, unsupported, conflicting }
+enum SourceModel : ubyte { unknown, gray, yCbCr, rgb }
+enum ColorMatrix : ubyte { unknown, bt601, bt709, identity }
+enum ColorRange : ubyte { unknown, full, video }
+enum TransferFunction : ubyte { unknown, linear, sRGB }
+enum ColorPrimaries : ubyte { unknown, bt601, bt709 }
+enum SampleSignedness : ubyte { unknown, unsigned }
+enum ByteOrder : ubyte { notApplicable, unknownOrder }
+
+struct JpegColorMetadata
+{
+    MetadataState state;
+    SourceModel model;
+    MetadataState modelState;
+    ColorMatrix matrix;
+    MetadataState matrixState;
+    ColorRange range;
+    MetadataState rangeState;
+    TransferFunction transfer;
+    MetadataState transferState;
+    ColorPrimaries primaries;
+    MetadataState primariesState;
+    uint bitDepth;
+    MetadataState bitDepthState;
+    SampleSignedness signedness;
+    ByteOrder byteOrder;
+    bool fromFrame, fromJfif, fromAdobe, fromIcc, fromExif;
+    bool iccMatrixTags, iccTransferTags;
+}
+
+struct JpegColorMetadataResult
+{
+    Status status;
+    FrameResult frame;
+    MetadataResult metadata;
+    JpegColorMetadata color;
+    @property bool ok() const @safe pure nothrow @nogc { return status == Status.ok; }
+}
+
 enum ComponentSignal : ubyte { gray, jfifYCbCr, adobeYCbCr, adobeRGB, unknown }
 
 struct FrameResult
@@ -450,6 +496,129 @@ MetadataResult inspectJpegMetadata(scope const(ubyte)[] file,
         p = end;
     }
     return MetadataResult(Status.truncated);
+}
+
+/// Neutral, metadata-only colour policy facts. No pixels are decoded and no
+/// colour transform is applied. Unknown declarations remain unknown.
+JpegColorMetadataResult inspectJpegColorMetadata(scope const(ubyte)[] file,
+    scope MetadataSegment[] iccSegments, Limits limits = Limits.init)
+    @safe pure nothrow @nogc
+{
+    JpegColorMetadataResult result;
+    result.frame = inspectJpegFrame(file, limits);
+    if (!result.frame.ok) { result.status = result.frame.status; return result; }
+    result.metadata = inspectJpegMetadata(file, iccSegments, limits);
+    if (!result.metadata.ok) { result.status = result.metadata.status; return result; }
+    auto color = &result.color;
+    color.state = MetadataState.known;
+    color.bitDepth = 8;
+    color.bitDepthState = MetadataState.known;
+    color.signedness = SampleSignedness.unsigned;
+    color.byteOrder = ByteOrder.notApplicable;
+    color.fromFrame = true;
+    color.fromJfif = result.frame.signal == ComponentSignal.jfifYCbCr;
+    color.fromAdobe = result.frame.signal == ComponentSignal.adobeRGB ||
+        result.frame.signal == ComponentSignal.adobeYCbCr;
+    color.fromIcc = result.metadata.iccSegments != 0;
+    color.fromExif = result.metadata.exifLength != 0;
+    final switch (result.frame.signal)
+    {
+        case ComponentSignal.gray:
+            color.model = SourceModel.gray;
+            color.modelState = MetadataState.known;
+            break;
+        case ComponentSignal.jfifYCbCr:
+            color.model = SourceModel.yCbCr;
+            color.modelState = MetadataState.known;
+            break;
+        case ComponentSignal.adobeYCbCr:
+            color.model = SourceModel.yCbCr;
+            color.modelState = MetadataState.known;
+            break;
+        case ComponentSignal.adobeRGB:
+            color.model = SourceModel.rgb;
+            color.modelState = MetadataState.known;
+            color.matrix = ColorMatrix.identity;
+            color.matrixState = MetadataState.known;
+            break;
+        case ComponentSignal.unknown:
+            color.model = SourceModel.unknown;
+            color.modelState = result.frame.info.components == 3 ?
+                MetadataState.unsupported : MetadataState.absent;
+            color.state = color.modelState;
+            break;
+    }
+    // JPEG/JFIF/Adobe do not by themselves establish range, transfer or
+    // primaries. Keeping these absent is intentional and prevents guessing.
+    color.rangeState = MetadataState.absent;
+    color.transferState = MetadataState.absent;
+    color.primariesState = MetadataState.absent;
+    if (result.metadata.iccSegments != 0)
+    {
+        // Bounded ICC header subset: validate profile size/signature and use
+        // only the declared colour space as neutral provenance.
+        const segment = iccSegments[0];
+        if (segment.length < 132 || segment.offset > file.length - segment.length)
+        { result.status = Status.invalid; return result; }
+        const profile = file[segment.offset .. segment.offset + segment.length];
+        const declaredLength = be32(profile, 0);
+        if (declaredLength < 132 || declaredLength > segment.length ||
+            profile[36 .. 40] != cast(const(ubyte)[])"acsp")
+        { result.status = Status.invalid; return result; }
+        color.fromIcc = true;
+        if (profile[16 .. 20] == cast(const(ubyte)[])"RGB ")
+        {
+            if (color.modelState == MetadataState.known && color.model != SourceModel.rgb)
+            { color.state = MetadataState.conflicting; color.modelState = MetadataState.conflicting; }
+            else { color.model = SourceModel.rgb; color.modelState = MetadataState.known; }
+        }
+        else if (profile[16 .. 20] == cast(const(ubyte)[])"GRAY")
+        {
+            if (color.modelState == MetadataState.known && color.model != SourceModel.gray)
+            { color.state = MetadataState.conflicting; color.modelState = MetadataState.conflicting; }
+            else { color.model = SourceModel.gray; color.modelState = MetadataState.known; }
+        }
+        else color.state = MetadataState.unsupported;
+        if (color.model == SourceModel.rgb && declaredLength >= 132)
+        {
+            const tagCount = be32(profile, 128);
+            if (tagCount > 1024 || 132 > declaredLength ||
+                tagCount > (declaredLength - 132) / 12)
+            { result.status = Status.invalid; return result; }
+            bool rxyz, gxyz, bxyz, rtrc, gtrc, btrc;
+            foreach (size_t i; 0 .. tagCount)
+            {
+                const at = 132 + i * 12;
+                const offset = be32(profile, at + 4), size = be32(profile, at + 8);
+                if (offset < 132 || offset > declaredLength || size > declaredLength - offset)
+                { result.status = Status.invalid; return result; }
+                const tag = profile[at .. at + 4];
+                if (tag == cast(const(ubyte)[])"rXYZ") rxyz = true;
+                else if (tag == cast(const(ubyte)[])"gXYZ") gxyz = true;
+                else if (tag == cast(const(ubyte)[])"bXYZ") bxyz = true;
+                else if (tag == cast(const(ubyte)[])"rTRC") rtrc = true;
+                else if (tag == cast(const(ubyte)[])"gTRC") gtrc = true;
+                else if (tag == cast(const(ubyte)[])"bTRC") btrc = true;
+            }
+            color.iccMatrixTags = rxyz && gxyz && bxyz;
+            color.iccTransferTags = rtrc && gtrc && btrc;
+            if (color.iccMatrixTags)
+            { color.matrix = ColorMatrix.unknown; color.matrixState = MetadataState.known; }
+            if (color.iccTransferTags)
+            { color.transfer = TransferFunction.unknown; color.transferState = MetadataState.known; }
+            if (!color.iccMatrixTags && !color.iccTransferTags)
+                color.state = MetadataState.unsupported;
+        }
+    }
+    // JFIF conventionally signals YCbCr; Adobe transform 0 signals RGB. Both
+    // declarations together are contradictory for the neutral model.
+    if (color.fromJfif && color.fromAdobe && color.model == SourceModel.rgb)
+    {
+        color.state = MetadataState.conflicting;
+        color.modelState = MetadataState.conflicting;
+    }
+    result.status = Status.ok;
+    return result;
 }
 
 // Reference JPEG quantizers in natural (not zigzag) coefficient order.

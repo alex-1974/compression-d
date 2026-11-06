@@ -4,6 +4,40 @@ import compression.jpeg;
 
 @safe unittest
 {
+    enum w = 16, h = 8;
+    ubyte[w * h] pixels;
+    foreach (i, ref p; pixels) p = cast(ubyte)(i & 255);
+    ConstPlane[1] source = [ConstPlane(pixels[], w)];
+    ubyte[4096] encoded;
+    auto encodedResult = encodeJfifPlanes(Info(w, h, 1), source[], encoded[]);
+    assert(encodedResult.ok);
+    MetadataSegment[8] icc;
+    auto metadata = inspectJpegColorMetadata(encoded[0 .. encodedResult.written], icc[]);
+    assert(metadata.ok);
+    assert(metadata.color.state == MetadataState.known);
+    assert(metadata.color.model == SourceModel.gray);
+    assert(metadata.color.modelState == MetadataState.known);
+    assert(metadata.color.bitDepth == 8);
+    assert(metadata.color.signedness == SampleSignedness.unsigned);
+    assert(metadata.color.rangeState == MetadataState.absent);
+    assert(metadata.color.transferState == MetadataState.absent);
+    assert(metadata.color.primariesState == MetadataState.absent);
+
+    foreach (i; 0 .. pixels.length) assert(pixels[i] == cast(ubyte)(i & 255));
+}
+
+@safe unittest
+{
+    MetadataSegment[1] segments;
+    Limits limits;
+    limits.maxFileBytes = 2;
+    auto result = inspectJpegColorMetadata(
+        cast(const(ubyte)[])[0xff, 0xd8, 0xff], segments[], limits);
+    assert(result.status == Status.limit);
+}
+
+@safe unittest
+{
     enum w = 32, h = 16;
     ubyte[w * h] pixels;
     foreach (i, ref p; pixels) p = cast(ubyte)((i * 13 + i / w * 7) & 255);
