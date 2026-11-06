@@ -26,6 +26,19 @@ C libraries, system compression backends or wrapper APIs.
 5. GZIP framing with CRC-32;
 6. TIFF/PNG consumer integration experiments.
 
+The experimental `compression.jpeg` module now contains the bounded Pure-D
+baseline JPEG codec core. It accepts borrowed encoded bytes and caller-owned
+native component planes for 8-bit grayscale and YCbCr 4:4:4/4:2:2/4:2:0;
+it does not perform RGB conversion or TIFF/metadata orchestration. The first
+admission is intentionally one-shot; streaming JPEG decode remains a separate
+gate.
+
+`planJpegPlanesRegion` and `decodeJpegPlanesRegion` provide bounded reference-
+grid ROI geometry and native-plane output. The current decoder deliberately
+uses an observable full-MCU fallback; `RoiDecodeReport` exposes the requested
+and decoded MCU counts so callers cannot mistake this path for cheap random
+access. Restart-indexed MCU seeking remains a follow-up optimization gate.
+
 The bounded encoder is available in `compression.encode`. It emits
 allocation-free fixed-Huffman DEFLATE with greedy LZ77 matching, zlib/GZIP
 wrappers with checksums, and stateful cross-chunk streaming. See [the encoding
@@ -33,7 +46,7 @@ contract](docs/ENCODING.md).
 
 ## Status
 
-Research repository with an implemented experimental M0 core contract
+Version 0.2.0. Research repository with an implemented experimental M0 core contract
 (`compression.core`): streaming result types, structured errors and checked
 output/expansion limits. No stable public API or release promise exists yet.
 
