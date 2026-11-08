@@ -1,7 +1,8 @@
 # API and release decision
 
-The current `compression-d` API is experimental and source-visible, but not
-promoted as a stable package ABI. Callers must import codec modules explicitly.
+The package ABI remains experimental and source-visible, but the GZIP streaming
+consumer surface is promoted as a stable source/API contract from v0.3.0.
+Callers must import codec modules explicitly.
 The package module intentionally does not wildcard-export them.
 
 ## Compatibility policy
@@ -12,7 +13,9 @@ The package module intentionally does not wildcard-export them.
 - A release candidate must pin the minimum DMD/LDC versions in CI and record
   the compiler versions in the verification report.
 - Numeric enum values, struct layout and experimental function names are not
-  stable until an ABI review and release decision are recorded.
+  stable. For the admitted GZIP surface, source-level names and semantics are
+  protected by the compatibility policy below; private state layout is not an
+  ABI promise.
 - Codec operations take caller-owned slices and typed state/workspaces. No
   hidden allocation, C backend or retained input reference is permitted.
 
@@ -28,8 +31,8 @@ time facts rather than portable ABI promises.
 
 ## Release gate
 
-No first public release is declared by this change. Before promotion, the
-project must complete the license/dependency review, pin compiler support in
-CI, decide whether the PNG container work belongs in `imageio-d`, and approve
-an ABI/API compatibility policy. Until then, applications should treat the
-interfaces as experimental and pin a repository commit.
+The first admitted consumer surface is the GZIP streaming decoder documented in
+`docs/GZIP_STREAMING.md`. Its state/result semantics, ownership rules, error
+categories and limit behavior are covered by the framing gate under DMD and
+LDC. Other modules remain experimental and applications should not infer
+stability for them.

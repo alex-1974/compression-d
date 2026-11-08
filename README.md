@@ -46,9 +46,9 @@ contract](docs/ENCODING.md).
 
 ## Status
 
-Version 0.2.0. Research repository with an implemented experimental M0 core contract
-(`compression.core`): streaming result types, structured errors and checked
-output/expansion limits. No stable public API or release promise exists yet.
+Version 0.3.0. The caller-owned streaming GZIP decode surface is admitted as a
+stable consumer contract. The remaining codecs and the general package ABI are
+still experimental. See the [stable GZIP contract](docs/GZIP_STREAMING.md).
 
 M1 adds `compression.bitstream` and `compression.huffman`: an LSB-first reader,
 validated canonical Huffman tables, and compact/prefix lookup strategies. See

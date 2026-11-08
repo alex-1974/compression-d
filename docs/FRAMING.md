@@ -1,9 +1,10 @@
-# Experimental checksums and framed decode (M3)
+# Checksums and framed decode
 
 `compression.checksum`, `compression.zlib` and `compression.gzip` implement
 Adler-32, IEEE CRC-32 and RFC 1950/1952 framing around the M2 raw Inflate engine.
-The public modules remain explicitly imported, experimental APIs. There is no
-C/backend dependency, auto-detection, encoder or implicit allocation.
+The GZIP streaming surface is stable from v0.3.0; zlib and checksum APIs remain
+experimental. There is no C/backend dependency, auto-detection, encoder or
+implicit allocation.
 
 ## Checksums
 
@@ -31,7 +32,7 @@ auto result = decodeZlib(zlibState, workspace, input, output, endOfInput);
 ```
 
 Use `decodeGzip(ref GzipState, ref InflateWorkspace, scope input, scope output,
-bool endOfInput = false)` for GZIP with the same call shape. Default state
+bool endOfInput = false)` for the stable GZIP streaming contract. Default state
 initialization starts a new operation with disabled policy limits. Configure
 budgets with `reset(limits)` before starting. States and workspace retain no
 pointers or slices. Operations are `@safe pure nothrow @nogc` under DIP1000.
